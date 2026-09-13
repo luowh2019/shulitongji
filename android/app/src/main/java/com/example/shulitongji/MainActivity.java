@@ -1,4 +1,4 @@
-﻿package com.example.shulitongji;
+package com.example.shulitongji;
 
 import android.app.Activity;
 import android.os.Bundle;

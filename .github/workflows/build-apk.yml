@@ -1,4 +1,4 @@
-﻿# GitHub Actions锛氱敤 Gradle 鏋勫缓 Android APK锛圵ebView 澹?+ 鏈湴 HTML锛?name: Build APK
+# GitHub Actions锛氱敤 Gradle 鏋勫缓 Android APK锛圵ebView 澹?+ 鏈湴 HTML锛?name: Build APK
 
 on:
   push:
