@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>数理统计工具箱</title>
+<style>
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { margin:0; background:#f7f7fa; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:#222; }
+.header { background:#1a4d8c; color:#fff; padding:14px 16px; font-size:17px; font-weight:600; text-align:center; }
+.tabs { display:flex; overflow-x:auto; background:#fff; border-bottom:1px solid #e5e5ea; position:sticky; top:0; z-index:10; }
+.tabs::-webkit-scrollbar { display:none; }
+.tab { flex:0 0 auto; padding:11px 14px; font-size:13px; color:#666; border:none; background:none; border-bottom:2px solid transparent; white-space:nowrap; }
+.tab.active { color:#1a4d8c; border-bottom-color:#408ce0; font-weight:600; }
+.wrap { padding:12px; max-width:760px; margin:0 auto; }
+.panel { display:none; }
+.panel.active { display:block; }
+.card { background:#fff; border-radius:10px; padding:14px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.sec-title { font-size:14px; font-weight:600; color:#1a4d8c; margin:0 0 10px; }
+.row { display:flex; align-items:center; margin-bottom:9px; }
+.row label { flex:0 0 108px; font-size:13px; color:#444; }
+.row input, .row select { flex:1; min-width:0; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:14px; background:#fff; }
+.hint { font-size:12px; color:#888; line-height:1.6; margin:4px 0 8px; }
+.dim { color:#999; font-size:12px; }
+.result-box { background:#eef4fc; border-left:3px solid #408ce0; border-radius:6px; padding:10px 12px; margin:8px 0; font-size:13px; line-height:1.8; }
+.highlight { color:#1a4d8c; font-weight:700; font-size:15px; }
+.err { color:#c0392b; font-size:13px; padding:8px; }
+.ok { color:#27ae60; } .warn { color:#e67e22; }
+canvas { width:100%; height:260px; display:block; }
+.cvwrap { margin:8px -4px; }
+.btns { display:flex; gap:8px; margin-top:6px; }
+.btn { padding:8px 14px; background:#408ce0; color:#fff; border:none; border-radius:6px; font-size:13px; }
+table { width:100%; border-collapse:collapse; margin-top:8px; font-size:13px; }
+th,td { border:1px solid #e5e5ea; padding:6px 8px; text-align:left; }
+th { background:#f0f4f9; }
+textarea { width:100%; min-height:90px; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:13px; font-family:monospace; }
+</style>
+</head>
+<body>
+<div class="header">数理统计工具箱</div>
+<div class="tabs" id="tabs">
+  <button class="tab active" data-tab="norm">正态分布</button>
+  <button class="tab" data-tab="tdist">t 分布</button>
+  <button class="tab" data-tab="chi2">卡方分布</button>
+  <button class="tab" data-tab="est">参数估计</button>
+  <button class="tab" data-tab="bayes">贝叶斯</button>
+  <button class="tab" data-tab="mc">蒙特卡洛</button>
+  <button class="tab" data-tab="markov">马尔可夫</button>
+  <button class="tab" data-tab="wilson">威尔逊区间</button>
+  <button class="tab" data-tab="duane">杜安模型</button>
+  <button class="tab" data-tab="amsaa">克罗-阿姆萨</button>
+</div>
+<div class="wrap">
+
+<!-- 正态分布 -->
+<div class="panel active" id="p_norm">
+  <div class="card"><div class="sec-title">① 正态分布（高斯分布）N(μ, σ²)</div>
+    <div class="row"><label>均值 μ</label><input type="number" id="n_mu" value="0" step="any"></div>
+    <div class="row"><label>标准差 σ</label><input type="number" id="n_sig" value="1" min="0.01" step="any"></div>
+    <div class="cvwrap"><canvas id="cv_norm"></canvas></div>
+    <div id="r_norm"></div>
+  </div>
+</div>
+
+<!-- t 分布 -->
+<div class="panel" id="p_tdist">
+  <div class="card"><div class="sec-title">② 学生 t 分布</div>
+    <div class="row"><label>自由度 ν</label><input type="number" id="t_df" value="5" min="1" step="1"></div>
+    <div class="hint">灰色曲线为标准正态 N(0,1) 作对比。ν→∞ 时 t 分布趋于正态。</div>
+    <div class="cvwrap"><canvas id="cv_tdist"></canvas></div>
+    <div id="r_tdist"></div>
+  </div>
+</div>
+
+<!-- 卡方分布 -->
+<div class="panel" id="p_chi2">
+  <div class="card"><div class="sec-title">③ 卡方分布 χ²(ν)</div>
+    <div class="row"><label>自由度 ν</label><input type="number" id="c_df" value="4" min="1" step="1"></div>
+    <div class="cvwrap"><canvas id="cv_chi2"></canvas></div>
+    <div id="r_chi2"></div>
+  </div>
+</div>
+
+<!-- 参数估计 -->
+<div class="panel" id="p_est">
+  <div class="card"><div class="sec-title">④ 参数估计（样本均值 / 区间估计）</div>
+    <div class="hint">输入样本数据（逗号/空格/换行分隔），自动计算均值、标准差与 95% 置信区间。</div>
+    <textarea id="e_data">5.1, 4.9, 5.2, 4.8, 5.0, 5.1, 4.9, 5.0, 5.1, 4.9</textarea>
+    <div id="r_est"></div>
+  </div>
+</div>
+
+<!-- 贝叶斯 -->
+<div class="panel" id="p_bayes">
+  <div class="card"><div class="sec-title">⑤ 贝叶斯统计：Beta-Binomial 更新</div>
+    <div class="hint">先验 Beta(α,β)，观测 k 次成功、n 次试验，后验为 Beta(α+k, β+n−k)。</div>
+    <div class="row"><label>先验 α</label><input type="number" id="b_a0" value="1" min="0.01" step="any"></div>
+    <div class="row"><label>先验 β</label><input type="number" id="b_b0" value="1" min="0.01" step="any"></div>
+    <div class="row"><label>成功次数 k</label><input type="number" id="b_k" value="8" min="0" step="1"></div>
+    <div class="row"><label>试验次数 n</label><input type="number" id="b_n" value="10" min="1" step="1"></div>
+    <div class="cvwrap"><canvas id="cv_bayes"></canvas></div>
+    <div id="r_bayes"></div>
+  </div>
+</div>
+
+<!-- 蒙特卡洛 -->
+<div class="panel" id="p_mc">
+  <div class="card"><div class="sec-title">⑥ 蒙特卡洛模拟（正态抽样）</div>
+    <div class="row"><label>抽样次数 N</label><input type="number" id="m_n" value="5000" min="100" max="100000" step="100"></div>
+    <div class="row"><label>总体均值 μ</label><input type="number" id="m_mu" value="0" step="any"></div>
+    <div class="row"><label>总体 σ</label><input type="number" id="m_sig" value="1" min="0.01" step="any"></div>
+    <div class="btns"><button class="btn" id="btn_mc">重新模拟</button></div>
+    <div class="cvwrap"><canvas id="cv_mc"></canvas></div>
+    <div id="r_mc"></div>
+  </div>
+</div>
+
+<!-- 马尔可夫 -->
+<div class="panel" id="p_markov">
+  <div class="card"><div class="sec-title">⑦ 马尔可夫链（状态演化）</div>
+    <div class="hint">2 状态转移矩阵 P，行和为 1。第 i 行 = 当前状态 i 转移到各状态的概率。</div>
+    <div class="row"><label>P[0][0]</label><input type="number" id="k_p00" value="0.9" step="any"></div>
+    <div class="row"><label>P[0][1]</label><input type="number" id="k_p01" value="0.1" step="any"></div>
+    <div class="row"><label>P[1][0]</label><input type="number" id="k_p10" value="0.3" step="any"></div>
+    <div class="row"><label>P[1][1]</label><input type="number" id="k_p11" value="0.7" step="any"></div>
+    <div class="row"><label>初始状态概率</label><input type="number" id="k_p0" value="1" min="0" max="1" step="any"></div>
+    <div class="cvwrap"><canvas id="cv_markov"></canvas></div>
+    <div id="r_markov"></div>
+  </div>
+</div>
+
+<!-- 威尔逊区间 -->
+<div class="panel" id="p_wilson">
+  <div class="card"><div class="sec-title">⑧ 威尔逊区间（比例置信区间）</div>
+    <div class="row"><label>成功数 k</label><input type="number" id="w_k" value="80" min="0" step="1"></div>
+    <div class="row"><label>总数 n</label><input type="number" id="w_n" value="100" min="1" step="1"></div>
+    <div class="row"><label>置信水平</label><select id="w_cl"><option>90%</option><option selected>95%</option><option>99%</option></select></div>
+    <div id="r_wilson"></div>
+  </div>
+</div>
+
+<!-- 杜安模型 -->
+<div class="panel" id="p_duane">
+  <div class="card"><div class="sec-title">⑨ 杜安模型 · 试验前规划</div>
+    <div class="row"><label>初始累计 MTBF M<sub>0</sub>（h）</label><input type="number" id="d_m0" value="100" min="0.001" step="any"></div>
+    <div class="row"><label>初始试验时间 T<sub>0</sub>（h）</label><input type="number" id="d_t0" value="100" min="0.001" step="any"></div>
+    <div class="row"><label>增长率 α（0~1）</label><input type="number" id="d_alpha" value="0.5" min="0.01" max="0.99" step="0.01"></div>
+    <div class="row"><label>目标瞬时 MTBF M<sub>g</sub>（h）</label><input type="number" id="d_mg" value="500" min="0.001" step="any"></div>
+    <div id="r1"></div>
+  </div>
+  <div class="card"><div class="sec-title">给定试验时间 → 可达 MTBF（反算）</div>
+    <div class="row"><label>试验时间 T（h）</label><input type="number" id="d_t" value="1000" min="0.001" step="any"></div>
+    <div id="r2"></div>
+  </div>
+  <div class="card"><div class="sec-title">由两点估计增长率 α（反推）</div>
+    <div class="row"><label>点1 T<sub>1</sub> / M<sub>1</sub></label><input type="number" id="d_t1" value="100" step="any" style="margin-right:8px"><input type="number" id="d_m1" value="100" step="any"></div>
+    <div class="row"><label>点2 T<sub>2</sub> / M<sub>2</sub></label><input type="number" id="d_t2" value="625" step="any" style="margin-right:8px"><input type="number" id="d_m2" value="250" step="any"></div>
+    <div id="r3"></div>
+  </div>
+</div>
+
+<!-- 克罗-阿姆萨 -->
+<div class="panel" id="p_amsaa">
+  <div class="card"><div class="sec-title">⑩ 克罗-阿姆萨模型 · 试验数据分析</div>
+    <div class="row"><label>截尾方式</label>
+      <span><label><input type="radio" name="trunc" id="tr_time" checked> 定时截尾</label>
+      <label><input type="radio" name="trunc" id="tr_fail"> 定数截尾</label></span>
+    </div>
+    <div class="row"><label>截尾时间 T（h）</label><input type="number" id="a_T" value="4000" min="0.001" step="any"></div>
+    <div class="btns"><button class="btn" id="btn_sample">载入示例数据</button></div>
+    <div class="hint">故障时间（严格递增）：</div>
+    <textarea id="a_times" placeholder="每行一个或逗号分隔">62.5, 93.3, 216.6, 331.6, 605.4, 687.6, 1090.7, 1290.8, 1919.6, 2260.1, 2617.9, 2804.3, 3107.9, 3667.5, 3757.6</textarea>
+    <div id="r4"></div>
+  </div>
+  <div class="card"><div class="sec-title">置信区间与达标预测</div>
+    <div class="row"><label>置信水平</label><select id="a_cl"><option value="0.80">80%</option><option value="0.90">90%</option><option value="0.95" selected>95%</option></select></div>
+    <div class="row"><label>目标瞬时 MTBF M<sub>g</sub>（h）</label><input type="number" id="a_mg" value="500" min="0.001" step="any"></div>
+    <div id="r5"></div>
+  </div>
+  <div class="card"><div class="sec-title">克罗扩展模型：投影 MTBF</div>
+    <div class="row"><label>A 类故障数 N<sub>A</sub></label><input type="number" id="a_na" value="4" min="0" step="1"></div>
+    <div class="hint">A 类不纠正；B 类修复后故障率按 0 处理。M<sub>proj</sub> = M<sub>i</sub>·N/N<sub>A</sub>。</div>
+    <div id="r6"></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ============ 数值工具 ============
+function fmt(v, d) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  if (Math.abs(v) >= 1e6 || (Math.abs(v) < 1e-4 && v !== 0)) return v.toExponential(4);
+  var digits = (d === undefined) ? 4 : d;
+  return Number(v.toFixed(digits)).toLocaleString('en-US', { maximumFractionDigits: digits });
+}
+function lgamma(x) {
+  var cof = [0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+             771.32342877765313, -176.61502916214059, 12.507343278686905,
+             -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - lgamma(1 - x);
+  x -= 1;
+  var a = cof[0], t = x + 7.5;
+  for (var i = 1; i < 9; i++) a += cof[i] / (x + i);
+  return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+}
+function gamma(x) { return Math.exp(lgamma(x)); }
+function normPpf(p) {
+  if (p <= 0) return -8.2; if (p >= 1) return 8.2;
+  var a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
+           1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+  var b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
+           6.680131188771972e+01, -1.328068155288572e+01];
+  var c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
+           -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+  var d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
+  var plow = 0.02425, q, r;
+  if (p < plow) { q = Math.sqrt(-2*Math.log(p));
+    return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+  else if (p <= 1-plow) { q = p-0.5; r = q*q;
+    return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1); }
+  else { q = Math.sqrt(-2*Math.log(1-p));
+    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+}
+function chi2Ppf(p, df) {
+  var z = normPpf(p), x = 2/(9*df);
+  return df * Math.pow(1 - x + z*Math.sqrt(x), 3);
+}
+// 学生 t 分布分位数（用正态近似，df>=10 很准；小 df 用 tPdf 面积积分反解）
+function tPpf(p, df) {
+  // 用 Cornish-Fisher 展开
+  var z = normPpf(p);
+  return z + (z*z*z+z)/(4*df) + (5*z*z*z*z*z+16*z*z*z+3*z)/(96*df*df);
+}
+
+// ============ 分布 PDF ============
+function normPdf(x, mu, sig) {
+  var z = (x-mu)/sig;
+  return Math.exp(-0.5*z*z) / (sig*Math.sqrt(2*Math.PI));
+}
+function tPdf(x, df) {
+  return Math.exp(lgamma((df+1)/2) - lgamma(df/2) - 0.5*Math.log(df*Math.PI)) * Math.pow(1 + x*x/df, -(df+1)/2);
+}
+function chi2Pdf(x, df) {
+  if (x <= 0) return 0;
+  return Math.exp((df/2-1)*Math.log(x) - x/2 - (df/2)*Math.LN2 - lgamma(df/2));
+}
+function betaPdf(x, a, b) {
+  if (x <= 0 || x >= 1) return 0;
+  var lb = lgamma(a) + lgamma(b) - lgamma(a+b);
+  return Math.exp((a-1)*Math.log(x) + (b-1)*Math.log(1-x) - lb);
+}
+
+// ============ 绘图 ============
+function setupCanvas(id) {
+  var c = document.getElementById(id);
+  var parent = c.parentElement;
+  var w = parent.clientWidth - 8;
+  var dpr = window.devicePixelRatio || 1;
+  c.width = w*dpr; c.height = 260*dpr;
+  c.style.width = w+'px'; c.style.height = '260px';
+  var ctx = c.getContext('2d'); ctx.scale(dpr, dpr);
+  return { ctx: ctx, W: w, H: 260 };
+}
+// 画多条曲线；opts.fillX=[a,b] 填充曲线下面积
+function drawCurve(box, series, xMin, xMax, yMax, fillX) {
+  var ctx = box.ctx, W = box.W, H = box.H;
+  var padL=38, padB=24, padT=10, padR=8;
+  var iw = W-padL-padR, ih = H-padT-padB;
+  function X(x){ return padL + (x-xMin)/(xMax-xMin)*iw; }
+  function Y(y){ return padT + ih - (y/yMax)*ih; }
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='#ddd'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,padT+ih); ctx.lineTo(padL+iw,padT+ih); ctx.stroke();
+  ctx.fillStyle='#aaa'; ctx.font='10px sans-serif'; ctx.textAlign='center';
+  ctx.fillText(xMin.toFixed(1), padL, H-8);
+  ctx.fillText(((xMin+xMax)/2).toFixed(1), padL+iw/2, H-8);
+  ctx.fillText(xMax.toFixed(1), padL+iw, H-8);
+  // 填充
+  if (fillX) {
+    ctx.fillStyle='rgba(64,140,224,0.18)';
+    ctx.beginPath();
+    ctx.moveTo(X(fillX[0]), Y(0));
+    for (var px=0; px<=iw; px++){ var x=xMin+px/iw*(xMax-xMin); if(x<fillX[0]||x>fillX[1]) continue; ctx.lineTo(X(x), Y(series[0].fn(x))); }
+    ctx.lineTo(X(fillX[1]), Y(0)); ctx.closePath(); ctx.fill();
+  }
+  series.forEach(function(s){
+    ctx.strokeStyle=s.color; ctx.lineWidth=s.width||2; ctx.beginPath();
+    var started=false;
+    for (var px=0; px<=iw; px++){
+      var x = xMin + px/iw*(xMax-xMin), y = s.fn(x);
+      if (y<0) y=0; var py=Y(y);
+      if (!started){ ctx.moveTo(X(x),py); started=true; } else ctx.lineTo(X(x),py);
+    }
+    ctx.stroke();
+  });
+}
+// 直方图
+function drawHist(box, counts, xMin, xMax, yMax, overlayFn) {
+  var ctx=box.ctx, W=box.W, H=box.H;
+  var padL=38, padB=24, padT=10, padR=8;
+  var iw=W-padL-padR, ih=H-padT-padB;
+  var nb = counts.length;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='#ddd'; ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,padT+ih); ctx.lineTo(padL+iw,padT+ih); ctx.stroke();
+  var bw = iw/nb;
+  ctx.fillStyle='rgba(64,140,224,0.55)';
+  for (var i=0;i<nb;i++){
+    var h = (counts[i]/yMax)*ih;
+    ctx.fillRect(padL+i*bw+1, padT+ih-h, bw-2, h);
+  }
+  if (overlayFn) {
+    ctx.strokeStyle='#e74c3c'; ctx.lineWidth=2; ctx.beginPath();
+    for (var px=0;px<=iw;px++){
+      var x = xMin + px/iw*(xMax-xMin);
+      var y = overlayFn(x);
+      var py = padT+ih - (y/yMax)*ih;
+      if (px===0) ctx.moveTo(padL+px,py); else ctx.lineTo(padL+px,py);
+    }
+    ctx.stroke();
+  }
+}
+// 多条折线（马尔可夫状态占比）
+function drawLines(box, series, xMax, yMax) {
+  var ctx=box.ctx, W=box.W, H=box.H;
+  var padL=38, padB=24, padT=10, padR=8;
+  var iw=W-padL-padR, ih=H-padT-padB;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='#ddd'; ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,padT+ih); ctx.lineTo(padL+iw,padT+ih); ctx.stroke();
+  var colors=['#408ce0','#e67e22','#27ae60'];
+  series.forEach(function(s,si){
+    ctx.strokeStyle=colors[si%3]; ctx.lineWidth=2; ctx.beginPath();
+    s.data.forEach(function(v,i){
+      var px = padL + (i/xMax)*iw;
+      var py = padT+ih - (v/yMax)*ih;
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+  });
+}
+
+// ============ 正态分布 ============
+function calcNorm() {
+  var mu = parseFloat(document.getElementById('n_mu').value)||0;
+  var sig = parseFloat(document.getElementById('n_sig').value)||1;
+  var box = setupCanvas('cv_norm');
+  var xMin = mu-4*sig, xMax = mu+4*sig;
+  var yMax = normPdf(mu,mu,sig)*1.15;
+  drawCurve(box, [{fn:function(x){return normPdf(x,mu,sig);}, color:'#408ce0'}], xMin, xMax, yMax);
+  // μ±1σ 概率
+  function erf(z){ // 正态 CDF 用近似
+    return normPdf;
+  }
+  var p1 = cdfNorm(mu+sig,mu,sig)-cdfNorm(mu-sig,mu,sig);
+  var p2 = cdfNorm(mu+2*sig,mu,sig)-cdfNorm(mu-2*sig,mu,sig);
+  var p3 = cdfNorm(mu+3*sig,mu,sig)-cdfNorm(mu-3*sig,mu,sig);
+  document.getElementById('r_norm').innerHTML =
+    '<div class="result-box">μ±1σ 覆盖概率 = <span class="highlight">'+(p1*100).toFixed(1)+'%</span>（约 68.27%）<br>'+
+    'μ±2σ = '+(p2*100).toFixed(1)+'%（约 95.45%）<br>μ±3σ = '+(p3*100).toFixed(1)+'%（约 99.73%）</div>';
+}
+function cdfNorm(x, mu, sig) {
+  return 0.5*(1+erf((x-mu)/(sig*Math.sqrt(2))));
+}
+function erf(x) {
+  // Abramowitz-Stegun 7.1.26
+  var s = (x>=0)?1:-1; x=Math.abs(x);
+  var t = 1/(1+0.3275911*x);
+  var y = 1-((((1.061405429*t-1.453152027)*t+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);
+  return s*y;
+}
+
+// ============ t 分布 ============
+function calcT() {
+  var df = parseFloat(document.getElementById('t_df').value)||5;
+  var box = setupCanvas('cv_tdist');
+  var xMin = -5, xMax = 5;
+  var yMax = Math.max(tPdf(0,df), normPdf(0,0,1))*1.15;
+  drawCurve(box, [
+    {fn:function(x){return tPdf(x,df);}, color:'#408ce0'},
+    {fn:function(x){return normPdf(x,0,1);}, color:'#bbb', width:1.5}
+  ], xMin, xMax, yMax);
+  var p95 = tPpf(0.975, df);
+  document.getElementById('r_tdist').innerHTML =
+    '<div class="result-box">自由度 ν = '+df+'<br>双侧 95% 临界值 t<sub>0.975</sub> = <span class="highlight">±'+Math.abs(p95).toFixed(3)+'</span>'+
+    '<span class="dim">（标准正态 z<sub>0.975</sub>=1.960，ν 越小尾部越厚）</span></div>';
+}
+
+// ============ 卡方分布 ============
+function calcChi2() {
+  var df = parseFloat(document.getElementById('c_df').value)||4;
+  var box = setupCanvas('cv_chi2');
+  var xMax = Math.max(df+4*Math.sqrt(2*df), 20);
+  var peak = chi2Pdf(df>1?(df-1):0.5, df);
+  drawCurve(box, [{fn:function(x){return chi2Pdf(x,df);}, color:'#408ce0'}], 0, xMax, peak*1.2);
+  var lo = chi2Ppf(0.025, df), hi = chi2Ppf(0.975, df);
+  document.getElementById('r_chi2').innerHTML =
+    '<div class="result-box">自由度 ν = '+df+'，均值 = ν = '+df+'，方差 = 2ν = '+(2*df)+'<br>'+
+    '95% 双侧分位：['+lo.toFixed(2)+', '+hi.toFixed(2)+']'+
+    '<span class="dim">（大 ν 时 χ²(ν)≈N(ν,2ν)）</span></div>';
+}
+
+// ============ 参数估计 ============
+function calcEst() {
+  var raw = document.getElementById('e_data').value;
+  var parts = raw.split(/[\s,，;；、]+/).filter(function(s){return s.trim()!=='';});
+  var arr = [];
+  for (var i=0;i<parts.length;i++){ var v=parseFloat(parts[i]); if(!isNaN(v)) arr.push(v); }
+  var el = document.getElementById('r_est');
+  if (arr.length < 2) { el.innerHTML = '<div class="err">至少输入 2 个样本</div>'; return; }
+  var n = arr.length;
+  var mean = arr.reduce(function(a,b){return a+b;},0)/n;
+  var ss = arr.reduce(function(a,b){return a+(b-mean)*(b-mean);},0);
+  var sd = Math.sqrt(ss/(n-1));
+  var se = sd/Math.sqrt(n);
+  var tc = Math.abs(tPpf(0.975, n-1));
+  var lo = mean - tc*se, hi = mean + tc*se;
+  el.innerHTML =
+    '<table><tr><th>统计量</th><th>值</th></tr>'+
+    '<tr><td>样本量 n</td><td>'+n+'</td></tr>'+
+    '<tr><td>样本均值 x̄</td><td>'+fmt(mean,4)+'</td></tr>'+
+    '<tr><td>样本标准差 s</td><td>'+fmt(sd,4)+'</td></tr>'+
+    '<tr><td>标准误 SE</td><td>'+fmt(se,4)+'</td></tr>'+
+    '<tr><td>95% 置信区间（t，df='+(n-1)+'）</td><td>['+fmt(lo,4)+', '+fmt(hi,4)+']</td></tr></table>'+
+    '<div class="dim" style="margin-top:6px">小样本用 t 分布；若总体 σ 已知或 n 很大，可改用 z=1.96。</div>';
+}
+
+// ============ 贝叶斯 ============
+function calcBayes() {
+  var a0=parseFloat(document.getElementById('b_a0').value)||1;
+  var b0=parseFloat(document.getElementById('b_b0').value)||1;
+  var k=parseInt(document.getElementById('b_k').value)||0;
+  var n=parseInt(document.getElementById('b_n').value)||1;
+  var box = setupCanvas('cv_bayes');
+  var a1=a0+k, b1=b0+n-k;
+  var peak = Math.max(betaPdf(0.5,a0,b0), betaPdf(0.5,a1,b1), 0.1)*1.25;
+  drawCurve(box, [
+    {fn:function(x){return betaPdf(x,a0,b0);}, color:'#bbb', width:1.5},
+    {fn:function(x){return betaPdf(x,a1,b1);}, color:'#408ce0'}
+  ], 0, 1, peak);
+  var mean1 = a1/(a1+b1);
+  var var1 = a1*b1/((a1+b1)*(a1+b1)*(a1+b1+1));
+  var sd1 = Math.sqrt(var1);
+  document.getElementById('r_bayes').innerHTML =
+    '<div class="result-box">先验 Beta('+a0+','+b0+') + 观测 '+k+'/'+n+'<br>'+
+    '后验 Beta('+a1+','+b1+')，后验均值 p = '+mean1.toFixed(3)+'，后验标准差 = '+sd1.toFixed(3)+'<br>'+
+    '<span class="dim">灰色为先验，蓝色为后验；n 越大后验收敛到观测频率。</span></div>';
+}
+
+// ============ 蒙特卡洛 ============
+var mcSeed = 1;
+function rng() { mcSeed = (mcSeed*1103515245+12345) & 0x7fffffff; return mcSeed/0x7fffffff; }
+function boxMuller() {
+  var u1=rng()||1e-9, u2=rng();
+  return Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2);
+}
+function calcMC() {
+  var N = parseInt(document.getElementById('m_n').value)||5000;
+  var mu = parseFloat(document.getElementById('m_mu').value)||0;
+  var sig = parseFloat(document.getElementById('m_sig').value)||1;
+  mcSeed = Date.now()%100000;
+  var nb = 30, xMin = mu-4*sig, xMax = mu+4*sig;
+  var counts = new Array(nb).fill(0);
+  var sum=0;
+  for (var i=0;i<N;i++){
+    var v = mu + sig*boxMuller();
+    sum += v;
+    var idx = Math.floor((v-xMin)/(xMax-xMin)*nb);
+    if (idx>=0 && idx<nb) counts[idx]++;
+  }
+  var box = setupCanvas('cv_mc');
+  var maxc = Math.max.apply(null, counts);
+  // 理论曲线缩放：直方图频率/总数/bin宽 = pdf
+  var binW = (xMax-xMin)/nb;
+  function overlay(x){ return normPdf(x,mu,sig); }
+  var yMaxHist = maxc; // 计数轴
+  // 为叠加，把理论 pdf 缩放到计数轴：pdf*N*binW
+  function overlayScaled(x){ return normPdf(x,mu,sig)*N*binW; }
+  drawHist(box, counts, xMin, xMax, yMaxHist*1.1, overlayScaled);
+  document.getElementById('r_mc').innerHTML =
+    '<div class="result-box">抽样 N = '+N+' 次，样本均值 = <span class="highlight">'+(sum/N).toFixed(4)+'</span>'+
+    '（理论 μ='+mu+'）<br><span class="dim">蓝色为抽样直方图，红线为理论正态密度（按计数轴缩放）。</span></div>';
+}
+
+// ============ 马尔可夫 ============
+function calcMarkov() {
+  var p00=parseFloat(document.getElementById('k_p00').value)||0.9;
+  var p01=parseFloat(document.getElementById('k_p01').value)||0.1;
+  var p10=parseFloat(document.getElementById('k_p10').value)||0.3;
+  var p11=parseFloat(document.getElementById('k_p11').value)||0.7;
+  var pStart=parseFloat(document.getElementById('k_p0').value)||1;
+  var P=[[p00,p01],[p10,p11]];
+  var p=[pStart, 1-pStart];
+  var steps=20;
+  var s0=[p[0]], s1=[p[1]];
+  for (var s=0;s<steps;s++){
+    var n0=p[0]*P[0][0]+p[1]*P[1][0];
+    var n1=p[0]*P[0][1]+p[1]*P[1][1];
+    p=[n0,n1]; s0.push(p[0]); s1.push(p[1]);
+  }
+  var box=setupCanvas('cv_markov');
+  drawLines(box, [{data:s0},{data:s1}], steps, 1);
+  // 稳态：πP=π
+  var pi0 = P[1][0]/(1-P[0][0]+P[1][0]);
+  document.getElementById('r_markov').innerHTML =
+    '<div class="result-box">'+steps+' 步后状态概率：状态0='+p[0].toFixed(4)+'，状态1='+p[1].toFixed(4)+'<br>'+
+    '稳态概率 π = ('+pi0.toFixed(4)+', '+(1-pi0).toFixed(4)+')'+
+    '<span class="dim">（蓝=状态0，橙=状态1）</span></div>';
+}
+
+// ============ 威尔逊区间 ============
+function calcWilson() {
+  var k=parseInt(document.getElementById('w_k').value)||0;
+  var n=parseInt(document.getElementById('w_n').value)||1;
+  var clSel=document.getElementById('w_cl').value;
+  var z = (clSel==='90%')?1.645:(clSel==='99%')?2.576:1.96;
+  var p=k/n;
+  var den=1+z*z/n;
+  var center=(p+z*z/(2*n))/den;
+  var half=z*Math.sqrt(p*(1-p)/n+z*z/(4*n*n))/den;
+  var el=document.getElementById('r_wilson');
+  el.innerHTML =
+    '<div class="result-box">观测比例 p̂ = '+p.toFixed(4)+'（'+k+'/'+n+'）<br>'+
+    clSel+' 置信区间：<span class="highlight">['+(center-half).toFixed(4)+', '+(center+half).toFixed(4)+']</span>'+
+    '（宽 '+(2*half).toFixed(4)+'）<br>'+
+    '<span class="dim">威尔逊区间在 n 小或 p 接近 0/1 时比正态近似更稳健。</span></div>';
+}
+
+// ============ 杜安模型 ============
+function duanePlan(t0,m0,alpha,mg){ var tg=t0*Math.pow((1-alpha)*mg/m0,1/alpha); var mc=m0*Math.pow(tg/t0,alpha); return {tg:tg,mc:mc,n:tg/mc,lamG:1/mg}; }
+function duaneAchieve(t0,m0,alpha,t){ var mc=m0*Math.pow(t/t0,alpha); return {mc:mc,mi:mc/(1-alpha),n:t/mc}; }
+function duaneAlpha(t1,m1,t2,m2){ return Math.log(m2/m1)/Math.log(t2/t1); }
+function parseNum(id){ var v=parseFloat(document.getElementById(id).value); return isNaN(v)?null:v; }
+function fmtT(h){ if(h===null||isNaN(h))return '—'; if(h>=100000)return (h/8760).toFixed(2)+' 年（'+fmt(h,0)+' h）'; if(h>=1000)return fmt(h,1)+' h'; return fmt(h,3)+' h'; }
+function calcD1(){
+  var t0=parseNum('d_t0'),m0=parseNum('d_m0'),a=parseNum('d_alpha'),mg=parseNum('d_mg'),el=document.getElementById('r1');
+  if(!t0||t0<=0){el.innerHTML='<div class="err">T<sub>0</sub> 需 &gt; 0</div>';return;}
+  if(!m0||m0<=0){el.innerHTML='<div class="err">M<sub>0</sub> 需 &gt; 0</div>';return;}
+  if(!a||a<=0||a>=1){el.innerHTML='<div class="err">α 需在 0~1</div>';return;}
+  if(!mg||mg<=0){el.innerHTML='<div class="err">M<sub>g</sub> 需 &gt; 0</div>';return;}
+  var r=duanePlan(t0,m0,a,mg);
+  el.innerHTML='<div class="result-box">达到目标所需时间：<span class="highlight">T<sub>g</sub> = '+fmtT(r.tg)+'</span><br>累计MTBF M<sub>c</sub> = '+fmt(r.mc)+' h，预计故障数 ≈ '+fmt(r.n,2)+' 次</div>';
+}
+function calcD2(){
+  var t0=parseNum('d_t0'),m0=parseNum('d_m0'),a=parseNum('d_alpha'),t=parseNum('d_t'),el=document.getElementById('r2');
+  if(!t0||t0<=0||!m0||m0<=0||!a||a<=0||a>=1||!t||t<=0){el.innerHTML='<div class="err">参数需有效</div>';return;}
+  var r=duaneAchieve(t0,m0,a,t);
+  el.innerHTML='<div class="result-box">试验 '+fmtT(t)+' 后：瞬时MTBF M<sub>i</sub> = <span class="highlight">'+fmt(r.mi)+' h</span>，累计MTBF M<sub>c</sub> = '+fmt(r.mc)+' h</div>';
+}
+function calcD3(){
+  var t1=parseNum('d_t1'),m1=parseNum('d_m1'),t2=parseNum('d_t2'),m2=parseNum('d_m2'),el=document.getElementById('r3');
+  if(!t1||!m1||!t2||!m2){el.innerHTML='<div class="err">四组数据均需 &gt; 0</div>';return;}
+  if(t2<=t1){el.innerHTML='<div class="err">需 T<sub>2</sub> &gt; T<sub>1</sub></div>';return;}
+  var a=duaneAlpha(t1,m1,t2,m2);
+  el.innerHTML='<div class="result-box">估计增长率 α = <span class="highlight">'+fmt(a,4)+'</span><br><span class="dim">α = ln(M<sub>2</sub>/M<sub>1</sub>) / ln(T<sub>2</sub>/T<sub>1</sub>)</span></div>';
+}
+
+// ============ 克罗-阿姆萨 ============
+function amsaa(times,T,failureTruncated){
+  var ts=times.slice().sort(function(a,b){return a-b;});
+  var n=ts.length,beta,lam,s,i;
+  if(failureTruncated){T=ts[n-1];s=0;for(i=0;i<n-1;i++)s+=Math.log(T/ts[i]);beta=n/s;}
+  else{s=0;for(i=0;i<n;i++)s+=Math.log(T/ts[i]);beta=n/s;}
+  lam=n/Math.pow(T,beta);
+  var alpha=1-beta,mc=T/n,lamI=lam*beta*Math.pow(T,beta-1),mi=1/lamI;
+  var mp=(beta>0)?mi*gamma(1+1/beta):null;
+  var m=failureTruncated?n-1:n,cvm=1/(12*n);
+  for(i=0;i<m;i++){var z=Math.pow(ts[i]/T,beta);cvm+=Math.pow(z-(2*(i+1)-1)/(2*n),2);}
+  return {T:T,n:n,beta:beta,lam:lam,alpha:alpha,mc:mc,lamI:lamI,mi:mi,mp:mp,cvm:cvm};
+}
+function amsaaGoalTime(T,mi,alpha,mg){ if(alpha<=0)return null; return T*Math.pow(mg/mi,1/alpha); }
+function parseTimes(){
+  var raw=document.getElementById('a_times').value;
+  var parts=raw.split(/[\s,，;；、]+/).filter(function(s){return s.trim()!=='';});
+  var arr=[];
+  for(var i=0;i<parts.length;i++){var v=parseFloat(parts[i]);if(isNaN(v))return {err:'无法解析 "'+parts[i]+'"'};arr.push(v);}
+  arr.sort(function(a,b){return a-b;});
+  for(i=1;i<arr.length;i++)if(arr[i]<=arr[i-1])return {err:'故障时间须严格递增'};
+  return {arr:arr};
+}
+function calcA(){
+  var failureTruncated=document.getElementById('tr_fail').checked;
+  var p=parseTimes(),el4=document.getElementById('r4'),el5=document.getElementById('r5'),el6=document.getElementById('r6');
+  if(p.err){el4.innerHTML='<div class="err">'+p.err+'</div>';el5.innerHTML='';el6.innerHTML='';return;}
+  if(p.arr.length<2){el4.innerHTML='<div class="err">至少 2 个故障时间</div>';return;}
+  var T=parseNum('a_T');
+  if(!failureTruncated && (!T||T<=0)){el4.innerHTML='<div class="err">定时截尾需 T &gt; 0</div>';return;}
+  var r=amsaa(p.arr,T,failureTruncated);
+  var growth=(r.alpha>0)?'<span class="ok">存在增长</span>':(Math.abs(r.alpha)<0.01?'<span class="dim">基本恒定</span>':'<span class="warn">恶化</span>');
+  var cl=parseFloat(document.getElementById('a_cl').value),gamma=1-cl,df=2*r.n;
+  var b_lo=(2*r.n*r.beta)/chi2Ppf(1-gamma/2,df);
+  var b_hi=(2*r.n*r.beta)/chi2Ppf(gamma/2,df);
+  var mi_lo=r.T/(r.n*b_hi),mi_hi=r.T/(r.n*b_lo);
+  var fit=r.cvm<0.224?'<span class="ok">拟合可接受</span>':'<span class="warn">偏差较大</span>';
+  el4.innerHTML='<div class="result-box">β̂='+fmt(r.beta,4)+'，λ̂='+fmt(r.lam,6)+'，α̂=1−β̂=<span class="highlight">'+fmt(r.alpha,4)+'</span> '+growth+'</div>'+
+    '<table><tr><th>指标</th><th>值</th></tr>'+
+    '<tr><td>累计MTBF M<sub>c</sub>=T/N</td><td>'+fmt(r.mc)+' h</td></tr>'+
+    '<tr><td>瞬时故障率 λ<sub>i</sub></td><td>'+fmt(r.lamI,6)+'/h</td></tr>'+
+    '<tr><td>瞬时MTBF M<sub>i</sub></td><td>'+fmt(r.mi)+' h</td></tr>'+
+    '<tr><td>'+Math.round(cl*100)+'% CI(M<sub>i</sub>)</td><td>['+fmt(mi_lo,1)+', '+fmt(mi_hi,1)+'] h</td></tr>'+
+    '<tr><td>预计MTBF M<sub>p</sub></td><td>'+fmt(r.mp)+' h</td></tr>'+
+    '<tr><td>C<sub>M</sub><sup>2</sup> 拟合</td><td>'+fmt(r.cvm,4)+' '+fit+'</td></tr></table>';
+  var mg=parseNum('a_mg');
+  if(!mg||mg<=0) el5.innerHTML='';
+  else if(r.alpha<=0) el5.innerHTML='<div class="err">β̂≥1 无增长</div>';
+  else { var tg=amsaaGoalTime(r.T,r.mi,r.alpha,mg); el5.innerHTML='<div class="result-box">达 M<sub>g</sub>='+fmt(mg)+' h 需 T<sub>g</sub>='+fmtT(tg)+'</div>'; }
+  var na=parseInt(document.getElementById('a_na').value);
+  if(isNaN(na)||na<1||na>=r.n) el6.innerHTML='<div class="err">需 1 ≤ N<sub>A</sub> &lt; '+r.n+'</div>';
+  else { var proj=r.mi*r.n/na; el6.innerHTML='<div class="result-box">N<sub>A</sub>='+na+'，投影 M<sub>proj</sub> ≈ <span class="highlight">'+fmt(proj)+' h</span><br><span class="dim">= M<sub>i</sub>·N/N<sub>A</sub></span></div>'; }
+}
+
+// ============ Tab 切换 ============
+var drawers = { norm:calcNorm, tdist:calcT, chi2:calcChi2, est:calcEst, bayes:calcBayes, mc:calcMC, markov:calcMarkov, wilson:calcWilson, duane:function(){calcD1();calcD2();calcD3();}, amsaa:calcA };
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('active', t.dataset.tab===name);});
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('p_'+name).classList.add('active');
+  if (drawers[name]) drawers[name]();
+}
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click', function(){ switchTab(t.dataset.tab); });
+});
+
+// 绑定输入
+['n_mu','n_sig'].forEach(function(id){document.getElementById(id).addEventListener('input',calcNorm);});
+['t_df'].forEach(function(id){document.getElementById(id).addEventListener('input',calcT);});
+['c_df'].forEach(function(id){document.getElementById(id).addEventListener('input',calcChi2);});
+document.getElementById('e_data').addEventListener('input',calcEst);
+['b_a0','b_b0','b_k','b_n'].forEach(function(id){document.getElementById(id).addEventListener('input',calcBayes);});
+document.getElementById('btn_mc').addEventListener('click',calcMC);
+['k_p00','k_p01','k_p10','k_p11','k_p0'].forEach(function(id){document.getElementById(id).addEventListener('input',calcMarkov);});
+['w_k','w_n'].forEach(function(id){document.getElementById(id).addEventListener('input',calcWilson);});
+document.getElementById('w_cl').addEventListener('change',calcWilson);
+['d_m0','d_t0','d_alpha','d_mg'].forEach(function(id){document.getElementById(id).addEventListener('input',calcD1);});
+['d_t0','d_m0','d_alpha','d_t'].forEach(function(id){document.getElementById(id).addEventListener('input',calcD2);});
+['d_t1','d_m1','d_t2','d_m2'].forEach(function(id){document.getElementById(id).addEventListener('input',calcD3);});
+['a_T','a_times','a_mg','a_na'].forEach(function(id){document.getElementById(id).addEventListener('input',calcA);});
+document.getElementById('a_cl').addEventListener('change',calcA);
+document.getElementById('tr_time').addEventListener('change',calcA);
+document.getElementById('tr_fail').addEventListener('change',calcA);
+document.getElementById('btn_sample').addEventListener('click',function(){
+  document.getElementById('a_times').value='62.5, 93.3, 216.6, 331.6, 605.4, 687.6, 1090.7, 1290.8, 1919.6, 2260.1, 2617.9, 2804.3, 3107.9, 3667.5, 3757.6';
+  document.getElementById('a_T').value=4000;
+  calcA();
+});
+
+// 初始化
+calcNorm();
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Android / Gradle 构建产物
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# 验证辅助（不入库）
+_verify/
+
+# 系统
+.DS_Store
+Thumbs.db

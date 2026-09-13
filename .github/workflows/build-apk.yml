@@ -1,0 +1,49 @@
+﻿# GitHub Actions锛氱敤 Gradle 鏋勫缓 Android APK锛圵ebView 澹?+ 鏈湴 HTML锛?name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.4'
+
+      - name: Generate Gradle Wrapper
+        run: |
+          cd android
+          gradle wrapper --gradle-version 8.4
+
+      - name: Build Debug APK
+        run: |
+          cd android
+          ./gradlew assembleDebug --no-daemon
+
+      - name: List APK
+        run: |
+          find android -name "*.apk" -type f
+          ls -la android/app/build/outputs/apk/debug/
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: shulitongji-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
