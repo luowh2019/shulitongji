@@ -131,11 +131,18 @@ textarea { width:100%; min-height:90px; padding:8px; border:1px solid #ddd; bord
 
 <!-- 威尔逊区间 -->
 <div class="panel" id="p_wilson">
-  <div class="card"><div class="sec-title">⑧ 威尔逊区间（比例置信区间）</div>
-    <div class="row"><label>成功数 k</label><input type="number" id="w_k" value="80" min="0" step="1"></div>
-    <div class="row"><label>总数 n</label><input type="number" id="w_n" value="100" min="1" step="1"></div>
-    <div class="row"><label>置信水平</label><select id="w_cl"><option>90%</option><option selected>95%</option><option>99%</option></select></div>
-    <div id="r_wilson"></div>
+  <div class="card"><div class="sec-title">⑧ 威尔逊得分区间</div>
+    <div class="row"><label>置信水平（%）</label><input type="number" id="w_conf" value="90" min="1" max="99" step="1"></div>
+  </div>
+  <div class="card"><div class="sec-title">① 样本量估算（半宽 → 所需样本量）</div>
+    <div class="row"><label>规划值 p</label><input type="number" id="w_p" value="0.80" min="0.01" max="0.99" step="0.01"></div>
+    <div class="row"><label>容许误差 E</label><input type="number" id="w_e" value="0.05" min="0.01" max="0.49" step="0.01"></div>
+    <div id="r_w1"></div>
+  </div>
+  <div class="card"><div class="sec-title">② 命中比例置信区间（实时）</div>
+    <div class="row"><label>样本量 n</label><input type="number" id="w_n2" value="18" min="1" step="1"></div>
+    <div class="row"><label>成功数 m</label><input type="number" id="w_m" value="16" min="0" step="1"></div>
+    <div id="r_w2"></div>
   </div>
 </div>
 
@@ -252,6 +259,16 @@ function betaPdf(x, a, b) {
 }
 
 // ============ 绘图 ============
+// 扫描函数在区间上的最大值（用于自适应 y 轴，避免曲线越界）
+function funcMax(fn, xMin, xMax, n) {
+  var mx = 0;
+  for (var i = 0; i <= n; i++) {
+    var x = xMin + (xMax - xMin) * i / n;
+    var y = fn(x);
+    if (y > mx) mx = y;
+  }
+  return mx;
+}
 function setupCanvas(id) {
   var c = document.getElementById(id);
   var parent = c.parentElement;
@@ -322,6 +339,11 @@ function drawHist(box, counts, xMin, xMax, yMax, overlayFn) {
 }
 // 多条折线（马尔可夫状态占比）
 function drawLines(box, series, xMax, yMax) {
+  if (!yMax) {
+    yMax = 0;
+    series.forEach(function(s){ s.data.forEach(function(v){ if (v > yMax) yMax = v; }); });
+    yMax = yMax * 1.15 || 1;
+  }
   var ctx=box.ctx, W=box.W, H=box.H;
   var padL=38, padB=24, padT=10, padR=8;
   var iw=W-padL-padR, ih=H-padT-padB;
@@ -390,8 +412,8 @@ function calcChi2() {
   var df = parseFloat(document.getElementById('c_df').value)||4;
   var box = setupCanvas('cv_chi2');
   var xMax = Math.max(df+4*Math.sqrt(2*df), 20);
-  var peak = chi2Pdf(df>1?(df-1):0.5, df);
-  drawCurve(box, [{fn:function(x){return chi2Pdf(x,df);}, color:'#408ce0'}], 0, xMax, peak*1.2);
+  var peak = funcMax(function(x){ return chi2Pdf(x, df); }, 0.001, xMax, 400);
+  drawCurve(box, [{fn:function(x){return chi2Pdf(x,df);}, color:'#408ce0'}], 0, xMax, peak*1.15);
   var lo = chi2Ppf(0.025, df), hi = chi2Ppf(0.975, df);
   document.getElementById('r_chi2').innerHTML =
     '<div class="result-box">自由度 ν = '+df+'，均值 = ν = '+df+'，方差 = 2ν = '+(2*df)+'<br>'+
@@ -432,7 +454,9 @@ function calcBayes() {
   var n=parseInt(document.getElementById('b_n').value)||1;
   var box = setupCanvas('cv_bayes');
   var a1=a0+k, b1=b0+n-k;
-  var peak = Math.max(betaPdf(0.5,a0,b0), betaPdf(0.5,a1,b1), 0.1)*1.25;
+  var peak = Math.max(
+    funcMax(function(x){ return betaPdf(x,a0,b0); }, 0.001, 0.999, 300),
+    funcMax(function(x){ return betaPdf(x,a1,b1); }, 0.001, 0.999, 300), 0.1)*1.15;
   drawCurve(box, [
     {fn:function(x){return betaPdf(x,a0,b0);}, color:'#bbb', width:1.5},
     {fn:function(x){return betaPdf(x,a1,b1);}, color:'#408ce0'}
@@ -498,7 +522,7 @@ function calcMarkov() {
     p=[n0,n1]; s0.push(p[0]); s1.push(p[1]);
   }
   var box=setupCanvas('cv_markov');
-  drawLines(box, [{data:s0},{data:s1}], steps, 1);
+  drawLines(box, [{data:s0},{data:s1}], steps, null);
   // 稳态：πP=π
   var pi0 = P[1][0]/(1-P[0][0]+P[1][0]);
   document.getElementById('r_markov').innerHTML =
@@ -507,22 +531,59 @@ function calcMarkov() {
     '<span class="dim">（蓝=状态0，橙=状态1）</span></div>';
 }
 
-// ============ 威尔逊区间 ============
-function calcWilson() {
-  var k=parseInt(document.getElementById('w_k').value)||0;
-  var n=parseInt(document.getElementById('w_n').value)||1;
-  var clSel=document.getElementById('w_cl').value;
-  var z = (clSel==='90%')?1.645:(clSel==='99%')?2.576:1.96;
-  var p=k/n;
-  var den=1+z*z/n;
-  var center=(p+z*z/(2*n))/den;
-  var half=z*Math.sqrt(p*(1-p)/n+z*z/(4*n*n))/den;
-  var el=document.getElementById('r_wilson');
-  el.innerHTML =
-    '<div class="result-box">观测比例 p̂ = '+p.toFixed(4)+'（'+k+'/'+n+'）<br>'+
-    clSel+' 置信区间：<span class="highlight">['+(center-half).toFixed(4)+', '+(center+half).toFixed(4)+']</span>'+
-    '（宽 '+(2*half).toFixed(4)+'）<br>'+
-    '<span class="dim">威尔逊区间在 n 小或 p 接近 0/1 时比正态近似更稳健。</span></div>';
+// ============ 威尔逊区间（移植自 weierxun 仓库）============
+function wilsonSampleSize(p, conf, margin) {
+  var z = normPpf(0.5 + conf/2), z2 = z*z, e2 = margin*margin;
+  var a = e2, b = z2*(2*e2 - p*(1-p)), c = z2*z2*(e2 - 0.25);
+  var disc = b*b - 4*a*c;
+  if (disc < 0) return null;
+  return Math.max(1, Math.ceil((-b + Math.sqrt(disc))/(2*a)));
+}
+function wilsonInterval(n, m, conf) {
+  var p_hat = m/n, z = normPpf(0.5 + conf/2), z2 = z*z;
+  var denom = 1 + z2/n;
+  var center = (p_hat + z2/(2*n))/denom;
+  var hw = z*Math.sqrt(p_hat*(1-p_hat)/n + z2/(4*n*n))/denom;
+  return { lower:Math.max(0, center-hw), upper:Math.min(1, center+hw), center:center, hw:hw, p_hat:p_hat, z:z };
+}
+function verifyHalfwidth(p, conf, margin, n) {
+  var z = normPpf(0.5 + conf/2), z2 = z*z;
+  return z*Math.sqrt(p*(1-p)/n + z2/(4*n*n))/(1 + z2/n);
+}
+function getWConf() {
+  var v = parseFloat(document.getElementById('w_conf').value);
+  return (isNaN(v) || v <= 0 || v >= 100) ? null : v/100;
+}
+function calcW1() {
+  var conf = getWConf(), p = parseFloat(document.getElementById('w_p').value),
+      e = parseFloat(document.getElementById('w_e').value), el = document.getElementById('r_w1');
+  if (conf === null) { el.innerHTML = '<div class="err">请输入有效置信水平（0~99）</div>'; return; }
+  if (isNaN(p) || p <= 0 || p >= 1) { el.innerHTML = '<div class="err">规划值 p 须在 0~1</div>'; return; }
+  if (isNaN(e) || e <= 0 || e >= 0.5) { el.innerHTML = '<div class="err">容许误差 E 须在 0~0.5</div>'; return; }
+  var n = wilsonSampleSize(p, conf, e);
+  if (n === null) { el.innerHTML = '<div class="err">参数无解</div>'; return; }
+  var z = normPpf(0.5 + conf/2), half = verifyHalfwidth(p, conf, e, n);
+  var html = '<div class="result-box">E=' + e.toFixed(2) + ' → 所需样本量 <span class="highlight">n = ' + n + '</span>' +
+    '（z=' + z.toFixed(4) + '，实际半宽=' + half.toFixed(4) + '）</div>';
+  html += '<table><tr><th>半宽</th><th>样本量</th></tr>';
+  for (var i = 1; i <= 10; i++) {
+    var mv = i*0.01, ni = wilsonSampleSize(p, conf, mv);
+    var cls = (Math.abs(mv - e) < 1e-9) ? ' style="background:#eef4fc"' : '';
+    html += '<tr' + cls + '><td>' + mv.toFixed(2) + '</td><td>' + (ni !== null ? ni : '-') + '</td></tr>';
+  }
+  html += '</table>';
+  el.innerHTML = html;
+}
+function calcW2() {
+  var conf = getWConf(), n = parseInt(document.getElementById('w_n2').value),
+      m = parseInt(document.getElementById('w_m').value), el = document.getElementById('r_w2');
+  if (conf === null) { el.innerHTML = '<div class="err">请输入有效置信水平</div>'; return; }
+  if (isNaN(n) || n <= 0) { el.innerHTML = '<div class="err">样本量 n 须为正整数</div>'; return; }
+  if (isNaN(m) || m < 0 || m > n) { el.innerHTML = '<div class="err">成功数 m 须在 0~n</div>'; return; }
+  var r = wilsonInterval(n, m, conf);
+  el.innerHTML = '<div class="result-box">置信区间：<span class="highlight">[' + r.lower.toFixed(4) + ', ' + r.upper.toFixed(4) + ']</span><br>' +
+    '命中率 p̂ = ' + r.p_hat.toFixed(4) + '（z=' + r.z.toFixed(4) + '）<br>' +
+    '区间中心 = ' + r.center.toFixed(4) + '，半宽 = ' + r.hw.toFixed(4) + '</div>';
 }
 
 // ============ 杜安模型 ============
@@ -609,7 +670,7 @@ function calcA(){
 }
 
 // ============ Tab 切换 ============
-var drawers = { norm:calcNorm, tdist:calcT, chi2:calcChi2, est:calcEst, bayes:calcBayes, mc:calcMC, markov:calcMarkov, wilson:calcWilson, duane:function(){calcD1();calcD2();calcD3();}, amsaa:calcA };
+var drawers = { norm:calcNorm, tdist:calcT, chi2:calcChi2, est:calcEst, bayes:calcBayes, mc:calcMC, markov:calcMarkov, wilson:function(){calcW1();calcW2();}, duane:function(){calcD1();calcD2();calcD3();}, amsaa:calcA };
 function switchTab(name){
   document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('active', t.dataset.tab===name);});
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
@@ -628,8 +689,8 @@ document.getElementById('e_data').addEventListener('input',calcEst);
 ['b_a0','b_b0','b_k','b_n'].forEach(function(id){document.getElementById(id).addEventListener('input',calcBayes);});
 document.getElementById('btn_mc').addEventListener('click',calcMC);
 ['k_p00','k_p01','k_p10','k_p11','k_p0'].forEach(function(id){document.getElementById(id).addEventListener('input',calcMarkov);});
-['w_k','w_n'].forEach(function(id){document.getElementById(id).addEventListener('input',calcWilson);});
-document.getElementById('w_cl').addEventListener('change',calcWilson);
+['w_conf','w_p','w_e'].forEach(function(id){document.getElementById(id).addEventListener('input',calcW1);});
+['w_conf','w_n2','w_m'].forEach(function(id){document.getElementById(id).addEventListener('input',calcW2);});
 ['d_m0','d_t0','d_alpha','d_mg'].forEach(function(id){document.getElementById(id).addEventListener('input',calcD1);});
 ['d_t0','d_m0','d_alpha','d_t'].forEach(function(id){document.getElementById(id).addEventListener('input',calcD2);});
 ['d_t1','d_m1','d_t2','d_m2'].forEach(function(id){document.getElementById(id).addEventListener('input',calcD3);});
