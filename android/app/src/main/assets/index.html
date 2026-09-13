@@ -399,7 +399,8 @@ function drawLines(box, series, xMax, yMax) {
 // ============ 正态分布 ============
 function calcNorm() {
   var mu = parseFloat(document.getElementById('n_mu').value)||0;
-  var sig = parseFloat(document.getElementById('n_sig').value)||1;
+  var sig = parseFloat(document.getElementById('n_sig').value);
+  if (isNaN(sig) || sig <= 0) { document.getElementById('r_norm').innerHTML='<div class="err">标准差 σ 须 &gt; 0</div>'; return; }
   var box = setupCanvas('cv_norm');
   var xMin = mu-4*sig, xMax = mu+4*sig;
   var yMax = normPdf(mu,mu,sig)*1.15;
@@ -428,7 +429,8 @@ function erf(x) {
 
 // ============ t 分布 ============
 function calcT() {
-  var df = parseFloat(document.getElementById('t_df').value)||5;
+  var df = parseFloat(document.getElementById('t_df').value);
+  if (isNaN(df) || df < 1) { document.getElementById('r_tdist').innerHTML='<div class="err">自由度 ν 须 ≥ 1</div>'; return; }
   var box = setupCanvas('cv_tdist');
   var xMin = -5, xMax = 5;
   var yMax = Math.max(tPdf(0,df), normPdf(0,0,1))*1.15;
@@ -444,7 +446,8 @@ function calcT() {
 
 // ============ 卡方分布 ============
 function calcChi2() {
-  var df = parseFloat(document.getElementById('c_df').value)||4;
+  var df = parseFloat(document.getElementById('c_df').value);
+  if (isNaN(df) || df < 1) { document.getElementById('r_chi2').innerHTML='<div class="err">自由度 ν 须 ≥ 1</div>'; return; }
   var box = setupCanvas('cv_chi2');
   var xMax = Math.max(df+4*Math.sqrt(2*df), 20);
   var peak = funcMax(function(x){ return chi2Pdf(x, df); }, 0.001, xMax, 400);
@@ -485,8 +488,14 @@ function calcEst() {
 function calcBayes() {
   var a0=parseFloat(document.getElementById('b_a0').value)||1;
   var b0=parseFloat(document.getElementById('b_b0').value)||1;
-  var k=parseInt(document.getElementById('b_k').value)||0;
-  var n=parseInt(document.getElementById('b_n').value)||1;
+  var k=parseInt(document.getElementById('b_k').value);
+  var n=parseInt(document.getElementById('b_n').value);
+  var el = document.getElementById('r_bayes');
+  if (isNaN(a0) || a0 <= 0) { el.innerHTML='<div class="err">先验 α 须 &gt; 0</div>'; return; }
+  if (isNaN(b0) || b0 <= 0) { el.innerHTML='<div class="err">先验 β 须 &gt; 0</div>'; return; }
+  if (isNaN(n) || n < 1) { el.innerHTML='<div class="err">试验次数 n 须 ≥ 1</div>'; return; }
+  if (isNaN(k) || k < 0) { el.innerHTML='<div class="err">成功次数 k 须 ≥ 0</div>'; return; }
+  if (k > n) { el.innerHTML='<div class="err">成功次数 k（'+k+'）不能大于试验次数 n（'+n+'）</div>'; return; }
   var box = setupCanvas('cv_bayes');
   var a1=a0+k, b1=b0+n-k;
   var peak = Math.max(
@@ -499,7 +508,7 @@ function calcBayes() {
   var mean1 = a1/(a1+b1);
   var var1 = a1*b1/((a1+b1)*(a1+b1)*(a1+b1+1));
   var sd1 = Math.sqrt(var1);
-  document.getElementById('r_bayes').innerHTML =
+  el.innerHTML =
     '<div class="result-box">先验 Beta('+a0+','+b0+') + 观测 '+k+'/'+n+'<br>'+
     '后验 Beta('+a1+','+b1+')，后验均值 p = '+mean1.toFixed(3)+'，后验标准差 = '+sd1.toFixed(3)+'<br>'+
     '<span class="dim">灰色为先验，蓝色为后验；n 越大后验收敛到观测频率。</span></div>';
@@ -513,9 +522,11 @@ function boxMuller() {
   return Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2);
 }
 function calcMC() {
-  var N = parseInt(document.getElementById('m_n').value)||5000;
+  var N = parseInt(document.getElementById('m_n').value);
   var mu = parseFloat(document.getElementById('m_mu').value)||0;
-  var sig = parseFloat(document.getElementById('m_sig').value)||1;
+  var sig = parseFloat(document.getElementById('m_sig').value);
+  if (isNaN(N) || N < 100) { document.getElementById('r_mc').innerHTML='<div class="err">抽样次数 N 须 ≥ 100</div>'; return; }
+  if (isNaN(sig) || sig <= 0) { document.getElementById('r_mc').innerHTML='<div class="err">总体 σ 须 &gt; 0</div>'; return; }
   mcSeed = Date.now()%100000;
   var nb = 30, xMin = mu-4*sig, xMax = mu+4*sig;
   var counts = new Array(nb).fill(0);
@@ -542,11 +553,22 @@ function calcMC() {
 
 // ============ 马尔可夫 ============
 function calcMarkov() {
-  var p00=parseFloat(document.getElementById('k_p00').value)||0.9;
-  var p01=parseFloat(document.getElementById('k_p01').value)||0.1;
-  var p10=parseFloat(document.getElementById('k_p10').value)||0.3;
-  var p11=parseFloat(document.getElementById('k_p11').value)||0.7;
-  var pStart=parseFloat(document.getElementById('k_p0').value)||1;
+  var p00=parseFloat(document.getElementById('k_p00').value);
+  var p01=parseFloat(document.getElementById('k_p01').value);
+  var p10=parseFloat(document.getElementById('k_p10').value);
+  var p11=parseFloat(document.getElementById('k_p11').value);
+  var pStart=parseFloat(document.getElementById('k_p0').value);
+  var el = document.getElementById('r_markov');
+  var probs = [p00,p01,p10,p11,pStart];
+  for (var i=0;i<probs.length;i++){
+    if (isNaN(probs[i]) || probs[i]<0 || probs[i]>1) {
+      el.innerHTML='<div class="err">所有概率须在 0~1 之间（当前第 '+(i+1)+' 个='+probs[i]+'）</div>'; return;
+    }
+  }
+  var row0 = p00+p01, row1 = p10+p11;
+  if (Math.abs(row0-1)>0.01 || Math.abs(row1-1)>0.01) {
+    el.innerHTML='<div class="err">转移矩阵每行之和须为 1：第1行='+row0.toFixed(3)+'，第2行='+row1.toFixed(3)+'</div>'; return;
+  }
   var P=[[p00,p01],[p10,p11]];
   var p=[pStart, 1-pStart];
   var steps=20;
