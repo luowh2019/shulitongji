@@ -34,26 +34,43 @@ table { width:100%; border-collapse:collapse; margin-top:8px; font-size:13px; }
 th,td { border:1px solid #e5e5ea; padding:6px 8px; text-align:left; }
 th { background:#f0f4f9; }
 textarea { width:100%; min-height:90px; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:13px; font-family:monospace; }
+/* 首页导航 */
+.nav-grid { display:flex; gap:12px; }
+.nav-col { flex:1; display:flex; flex-direction:column; gap:10px; }
+.nav-group-title { font-size:13px; color:#888; margin:4px 6px 0; }
+.nav-item { padding:16px 12px; background:#fff; border-radius:10px; border:none; font-size:15px; color:#1a4d8c; font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,.05); text-align:left; width:100%; }
+.back { background:none; border:none; color:#408ce0; font-size:14px; padding:4px 0 10px; cursor:pointer; }
 </style>
 </head>
 <body>
 <div class="header">数理统计工具箱</div>
-<div class="tabs" id="tabs">
-  <button class="tab active" data-tab="norm">正态分布</button>
-  <button class="tab" data-tab="tdist">t 分布</button>
-  <button class="tab" data-tab="chi2">卡方分布</button>
-  <button class="tab" data-tab="est">参数估计</button>
-  <button class="tab" data-tab="bayes">贝叶斯</button>
-  <button class="tab" data-tab="mc">蒙特卡洛</button>
-  <button class="tab" data-tab="markov">马尔可夫</button>
-  <button class="tab" data-tab="wilson">威尔逊区间</button>
-  <button class="tab" data-tab="duane">杜安模型</button>
-  <button class="tab" data-tab="amsaa">克罗-阿姆萨</button>
-</div>
 <div class="wrap">
 
+<!-- 首页导航：左列分布与统计，右列区间与可靠性 -->
+<div class="panel active" id="p_home">
+  <div class="nav-grid">
+    <div class="nav-col">
+      <div class="nav-group-title">分布与统计</div>
+      <button class="nav-item" data-go="norm">正态分布</button>
+      <button class="nav-item" data-go="tdist">t 分布</button>
+      <button class="nav-item" data-go="chi2">卡方分布</button>
+      <button class="nav-item" data-go="est">参数估计</button>
+      <button class="nav-item" data-go="bayes">贝叶斯统计</button>
+      <button class="nav-item" data-go="mc">蒙特卡洛模拟</button>
+      <button class="nav-item" data-go="markov">马尔可夫链</button>
+    </div>
+    <div class="nav-col">
+      <div class="nav-group-title">区间与可靠性</div>
+      <button class="nav-item" data-go="wilson">威尔逊区间</button>
+      <button class="nav-item" data-go="duane">杜安模型</button>
+      <button class="nav-item" data-go="amsaa">克罗-阿姆萨</button>
+    </div>
+  </div>
+</div>
+
 <!-- 正态分布 -->
-<div class="panel active" id="p_norm">
+<div class="panel" id="p_norm">
+  <button class="back" data-go="home">← 返回首页</button>
   <div class="card"><div class="sec-title">① 正态分布（高斯分布）N(μ, σ²)</div>
     <div class="row"><label>均值 μ</label><input type="number" id="n_mu" value="0" step="any"></div>
     <div class="row"><label>标准差 σ</label><input type="number" id="n_sig" value="1" min="0.01" step="any"></div>
@@ -64,7 +81,8 @@ textarea { width:100%; min-height:90px; padding:8px; border:1px solid #ddd; bord
 
 <!-- t 分布 -->
 <div class="panel" id="p_tdist">
-  <div class="card"><div class="sec-title">② 学生 t 分布</div>
+  <button class="back" data-go="home">← 返回首页</button>
+  <div class="card"><div class="sec-title">② t 分布</div>
     <div class="row"><label>自由度 ν</label><input type="number" id="t_df" value="5" min="1" step="1"></div>
     <div class="hint">灰色曲线为标准正态 N(0,1) 作对比。ν→∞ 时 t 分布趋于正态。</div>
     <div class="cvwrap"><canvas id="cv_tdist"></canvas></div>
@@ -74,6 +92,7 @@ textarea { width:100%; min-height:90px; padding:8px; border:1px solid #ddd; bord
 
 <!-- 卡方分布 -->
 <div class="panel" id="p_chi2">
+  <button class="back" data-go="home">← 返回首页</button>
   <div class="card"><div class="sec-title">③ 卡方分布 χ²(ν)</div>
     <div class="row"><label>自由度 ν</label><input type="number" id="c_df" value="4" min="1" step="1"></div>
     <div class="cvwrap"><canvas id="cv_chi2"></canvas></div>
@@ -83,6 +102,7 @@ textarea { width:100%; min-height:90px; padding:8px; border:1px solid #ddd; bord
 
 <!-- 参数估计 -->
 <div class="panel" id="p_est">
+  <button class="back" data-go="home">← 返回首页</button>
   <div class="card"><div class="sec-title">④ 参数估计（样本均值 / 区间估计）</div>
     <div class="hint">输入样本数据（逗号/空格/换行分隔），自动计算均值、标准差与 95% 置信区间。</div>
     <textarea id="e_data">5.1, 4.9, 5.2, 4.8, 5.0, 5.1, 4.9, 5.0, 5.1, 4.9</textarea>
@@ -92,6 +112,7 @@ textarea { width:100%; min-height:90px; padding:8px; border:1px solid #ddd; bord
 
 <!-- 贝叶斯 -->
 <div class="panel" id="p_bayes">
+  <button class="back" data-go="home">← 返回首页</button>
   <div class="card"><div class="sec-title">⑤ 贝叶斯统计：Beta-Binomial 更新</div>
     <div class="hint">先验 Beta(α,β)，观测 k 次成功、n 次试验，后验为 Beta(α+k, β+n−k)。</div>
     <div class="row"><label>先验 α</label><input type="number" id="b_a0" value="1" min="0.01" step="any"></div>
@@ -105,6 +126,7 @@ textarea { width:100%; min-height:90px; padding:8px; border:1px solid #ddd; bord
 
 <!-- 蒙特卡洛 -->
 <div class="panel" id="p_mc">
+  <button class="back" data-go="home">← 返回首页</button>
   <div class="card"><div class="sec-title">⑥ 蒙特卡洛模拟（正态抽样）</div>
     <div class="row"><label>抽样次数 N</label><input type="number" id="m_n" value="5000" min="100" max="100000" step="100"></div>
     <div class="row"><label>总体均值 μ</label><input type="number" id="m_mu" value="0" step="any"></div>
@@ -117,6 +139,7 @@ textarea { width:100%; min-height:90px; padding:8px; border:1px solid #ddd; bord
 
 <!-- 马尔可夫 -->
 <div class="panel" id="p_markov">
+  <button class="back" data-go="home">← 返回首页</button>
   <div class="card"><div class="sec-title">⑦ 马尔可夫链（状态演化）</div>
     <div class="hint">2 状态转移矩阵 P，行和为 1。第 i 行 = 当前状态 i 转移到各状态的概率。</div>
     <div class="row"><label>P[0][0]</label><input type="number" id="k_p00" value="0.9" step="any"></div>
@@ -131,6 +154,7 @@ textarea { width:100%; min-height:90px; padding:8px; border:1px solid #ddd; bord
 
 <!-- 威尔逊区间 -->
 <div class="panel" id="p_wilson">
+  <button class="back" data-go="home">← 返回首页</button>
   <div class="card"><div class="sec-title">⑧ 威尔逊得分区间</div>
     <div class="row"><label>置信水平（%）</label><input type="number" id="w_conf" value="90" min="1" max="99" step="1"></div>
   </div>
@@ -148,6 +172,7 @@ textarea { width:100%; min-height:90px; padding:8px; border:1px solid #ddd; bord
 
 <!-- 杜安模型 -->
 <div class="panel" id="p_duane">
+  <button class="back" data-go="home">← 返回首页</button>
   <div class="card"><div class="sec-title">⑨ 杜安模型 · 试验前规划</div>
     <div class="row"><label>初始累计 MTBF M<sub>0</sub>（h）</label><input type="number" id="d_m0" value="100" min="0.001" step="any"></div>
     <div class="row"><label>初始试验时间 T<sub>0</sub>（h）</label><input type="number" id="d_t0" value="100" min="0.001" step="any"></div>
@@ -168,6 +193,7 @@ textarea { width:100%; min-height:90px; padding:8px; border:1px solid #ddd; bord
 
 <!-- 克罗-阿姆萨 -->
 <div class="panel" id="p_amsaa">
+  <button class="back" data-go="home">← 返回首页</button>
   <div class="card"><div class="sec-title">⑩ 克罗-阿姆萨模型 · 试验数据分析</div>
     <div class="row"><label>截尾方式</label>
       <span><label><input type="radio" name="trunc" id="tr_time" checked> 定时截尾</label>
@@ -282,17 +308,26 @@ function setupCanvas(id) {
 // 画多条曲线；opts.fillX=[a,b] 填充曲线下面积
 function drawCurve(box, series, xMin, xMax, yMax, fillX) {
   var ctx = box.ctx, W = box.W, H = box.H;
-  var padL=38, padB=24, padT=10, padR=8;
+  var padL=48, padB=24, padT=10, padR=8;
   var iw = W-padL-padR, ih = H-padT-padB;
   function X(x){ return padL + (x-xMin)/(xMax-xMin)*iw; }
   function Y(y){ return padT + ih - (y/yMax)*ih; }
   ctx.clearRect(0,0,W,H);
-  ctx.strokeStyle='#ddd'; ctx.lineWidth=1;
+  // 水平网格线 + y 轴刻度
+  ctx.strokeStyle='#f0f0f0'; ctx.lineWidth=1;
+  ctx.fillStyle='#999'; ctx.font='10px sans-serif';
+  for (var k=0;k<=4;k++){
+    var yv = yMax*k/4, yy = Y(yv);
+    ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(padL+iw, yy); ctx.stroke();
+    ctx.textAlign='right'; ctx.fillText(yv.toFixed(2), padL-4, yy+3);
+  }
+  // 坐标轴
+  ctx.strokeStyle='#ccc';
   ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,padT+ih); ctx.lineTo(padL+iw,padT+ih); ctx.stroke();
-  ctx.fillStyle='#aaa'; ctx.font='10px sans-serif'; ctx.textAlign='center';
-  ctx.fillText(xMin.toFixed(1), padL, H-8);
-  ctx.fillText(((xMin+xMax)/2).toFixed(1), padL+iw/2, H-8);
-  ctx.fillText(xMax.toFixed(1), padL+iw, H-8);
+  ctx.fillStyle='#aaa'; ctx.textAlign='center';
+  ctx.fillText(xMin.toFixed(2), padL, H-8);
+  ctx.fillText(((xMin+xMax)/2).toFixed(2), padL+iw/2, H-8);
+  ctx.fillText(xMax.toFixed(2), padL+iw, H-8);
   // 填充
   if (fillX) {
     ctx.fillStyle='rgba(64,140,224,0.18)';
@@ -413,7 +448,7 @@ function calcChi2() {
   var box = setupCanvas('cv_chi2');
   var xMax = Math.max(df+4*Math.sqrt(2*df), 20);
   var peak = funcMax(function(x){ return chi2Pdf(x, df); }, 0.001, xMax, 400);
-  drawCurve(box, [{fn:function(x){return chi2Pdf(x,df);}, color:'#408ce0'}], 0, xMax, peak*1.15);
+  drawCurve(box, [{fn:function(x){return chi2Pdf(x,df);}, color:'#408ce0'}], 0.001, xMax, peak*1.15);
   var lo = chi2Ppf(0.025, df), hi = chi2Ppf(0.975, df);
   document.getElementById('r_chi2').innerHTML =
     '<div class="result-box">自由度 ν = '+df+'，均值 = ν = '+df+'，方差 = 2ν = '+(2*df)+'<br>'+
@@ -460,7 +495,7 @@ function calcBayes() {
   drawCurve(box, [
     {fn:function(x){return betaPdf(x,a0,b0);}, color:'#bbb', width:1.5},
     {fn:function(x){return betaPdf(x,a1,b1);}, color:'#408ce0'}
-  ], 0, 1, peak);
+  ], 0.001, 0.999, peak);
   var mean1 = a1/(a1+b1);
   var var1 = a1*b1/((a1+b1)*(a1+b1)*(a1+b1+1));
   var sd1 = Math.sqrt(var1);
@@ -669,16 +704,15 @@ function calcA(){
   else { var proj=r.mi*r.n/na; el6.innerHTML='<div class="result-box">N<sub>A</sub>='+na+'，投影 M<sub>proj</sub> ≈ <span class="highlight">'+fmt(proj)+' h</span><br><span class="dim">= M<sub>i</sub>·N/N<sub>A</sub></span></div>'; }
 }
 
-// ============ Tab 切换 ============
+// ============ 导航切换 ============
 var drawers = { norm:calcNorm, tdist:calcT, chi2:calcChi2, est:calcEst, bayes:calcBayes, mc:calcMC, markov:calcMarkov, wilson:function(){calcW1();calcW2();}, duane:function(){calcD1();calcD2();calcD3();}, amsaa:calcA };
-function switchTab(name){
-  document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('active', t.dataset.tab===name);});
-  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+function showPanel(name){
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
   document.getElementById('p_'+name).classList.add('active');
   if (drawers[name]) drawers[name]();
 }
-document.querySelectorAll('.tab').forEach(function(t){
-  t.addEventListener('click', function(){ switchTab(t.dataset.tab); });
+document.querySelectorAll('[data-go]').forEach(function(el){
+  el.addEventListener('click', function(){ showPanel(el.dataset.go); });
 });
 
 // 绑定输入
