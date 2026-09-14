@@ -56,8 +56,3 @@ shulitongji/
 ├── .github/workflows/build-apk.yml     # 云端编译
 └── README.md
 ```
-
-## 参考
-
-- 威尔逊区间实现移植自 [weierxun](https://github.com/luowh2019/weierxun)
-- 杜安/克罗-阿姆萨方法最初实现于 [relgrowth](https://github.com/luowh2019/relgrowth)
