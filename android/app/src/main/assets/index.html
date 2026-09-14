@@ -220,10 +220,10 @@ input:invalid { border-color: #e74c3c; }
       <span><label><input type="radio" name="trunc" id="tr_time" checked> 定时截尾</label>
       <label><input type="radio" name="trunc" id="tr_fail"> 定数截尾</label></span>
     </div>
-    <div class="row"><label>截尾时间 T（h）</label><input type="number" id="a_T" value="4000" min="0.001" step="any"></div>
+    <div class="row"><label>截尾时间 T（h）</label><input type="number" id="a_T" value="2000" min="0.001" step="any"></div>
     <div class="btns"><button class="btn" id="btn_sample">载入示例数据</button></div>
     <div class="hint">故障时间（严格递增）：</div>
-    <textarea id="a_times" placeholder="每行一个或逗号分隔">62.5, 93.3, 216.6, 331.6, 605.4, 687.6, 1090.7, 1290.8, 1919.6, 2260.1, 2617.9, 2804.3, 3107.9, 3667.5, 3757.6</textarea>
+    <textarea id="a_times" placeholder="每行一个或逗号分隔">14.3, 74.2, 144.1, 223.9, 329.0, 457.4, 629.0, 825.7, 958.0, 1075.7, 1356.5, 1605.7, 1770.4, 1985.4</textarea>
     <div id="r4"></div>
   </div>
   <div class="card"><div class="sec-title">置信区间与达标预测</div>
@@ -825,8 +825,8 @@ document.getElementById('a_cl').addEventListener('change',calcA);
 document.getElementById('tr_time').addEventListener('change',calcA);
 document.getElementById('tr_fail').addEventListener('change',calcA);
 document.getElementById('btn_sample').addEventListener('click',function(){
-  document.getElementById('a_times').value='62.5, 93.3, 216.6, 331.6, 605.4, 687.6, 1090.7, 1290.8, 1919.6, 2260.1, 2617.9, 2804.3, 3107.9, 3667.5, 3757.6';
-  document.getElementById('a_T').value=4000;
+  document.getElementById('a_times').value='14.3, 74.2, 144.1, 223.9, 329.0, 457.4, 629.0, 825.7, 958.0, 1075.7, 1356.5, 1605.7, 1770.4, 1985.4';
+  document.getElementById('a_T').value=2000;
   calcA();
 });
 
