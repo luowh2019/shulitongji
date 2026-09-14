@@ -508,13 +508,24 @@ function calcF() {
   if (isNaN(d1) || d1 < 1) { el.innerHTML='<div class="err">分子自由度 d<sub>1</sub> 须 ≥ 1</div>'; return; }
   if (isNaN(d2) || d2 < 1) { el.innerHTML='<div class="err">分母自由度 d<sub>2</sub> 须 ≥ 1</div>'; return; }
   var box = setupCanvas('cv_f');
-  var mean = (d2 > 2) ? d2/(d2-2) : 1.5;
+  var hasMean = d2 > 2;
+  var mean = hasMean ? d2/(d2-2) : 1.5;
+  var hasVar = d2 > 4;
+  var sd = hasVar ? Math.sqrt(2*d2*d2*(d1+d2-2)/(d1*(d2-2)*(d2-2)*(d2-4))) : 0;
   var xMax = Math.max(mean*4, 3);
-  var peak = funcMax(function(x){ return fPdf(x, d1, d2); }, 0.001, xMax, 400);
-  drawCurve(box, [{fn:function(x){return fPdf(x,d1,d2);}, color:'#408ce0'}], 0.001, xMax, peak*1.15);
-  var meanStr = (d2 > 2) ? '均值 = '+mean.toFixed(3) : '（d<sub>2</sub>≤2 时均值不存在）';
-  el.innerHTML = '<div class="result-box">d<sub>1</sub>='+d1+', d<sub>2</sub>='+d2+'<br>'+meanStr+
-    '<br><span class="dim">F = (S<sub>1</sub>²/d<sub>1</sub>) / (S<sub>2</sub>²/d<sub>2</sub>)，用于两总体方差比检验</span></div>';
+  if (hasVar) xMax = Math.max(xMax, mean+4*sd);
+  var peakF = funcMax(function(x){ return fPdf(x, d1, d2); }, 0.001, xMax, 400);
+  var curves = [{fn:function(x){return fPdf(x,d1,d2);}, color:'#408ce0'}];
+  var yMax = peakF*1.15;
+  if (hasVar) {
+    curves.push({fn:function(x){return normPdf(x, mean, sd);}, color:'#bbb', width:1.5});
+    yMax = Math.max(yMax, normPdf(mean, mean, sd)*1.15);
+  }
+  drawCurve(box, curves, 0.001, xMax, yMax);
+  var meanStr = hasMean ? '均值 = '+mean.toFixed(3) : '（d<sub>2</sub>≤2 时均值不存在）';
+  var sdStr = hasVar ? '，标准差 = '+sd.toFixed(3) : '（d<sub>2</sub>≤4 时方差不存在，无正态参照）';
+  el.innerHTML = '<div class="result-box">d<sub>1</sub>='+d1+', d<sub>2</sub>='+d2+'<br>'+meanStr+sdStr +
+    '<br><span class="dim">灰线为同均值同方差正态 N(μ,σ²)；F = (S<sub>1</sub>²/d<sub>1</sub>)/(S<sub>2</sub>²/d<sub>2</sub>)</span></div>';
 }
 
 // ============ 参数估计 ============
