@@ -61,6 +61,7 @@ input:invalid { border-color: #e74c3c; }
       <button class="nav-item" data-go="norm">正态分布</button>
       <button class="nav-item" data-go="tdist">t 分布</button>
       <button class="nav-item" data-go="chi2">卡方分布</button>
+      <button class="nav-item" data-go="f">F 分布</button>
       <button class="nav-item" data-go="est">参数估计</button>
       <button class="nav-item" data-go="bayes">贝叶斯统计</button>
       <button class="nav-item" data-go="mc">蒙特卡洛模拟</button>
@@ -102,8 +103,21 @@ input:invalid { border-color: #e74c3c; }
   <button class="back" data-go="home">← 返回首页</button>
   <div class="card"><div class="sec-title">③ 卡方分布 χ²(ν)</div>
     <div class="row"><label>自由度 ν</label><input type="number" id="c_df" value="4" min="1" step="1"></div>
+    <div class="hint">灰色曲线为同均值同方差的正态 N(ν, √(2ν)) 作对比；ν 越大卡方越接近正态。</div>
     <div class="cvwrap"><canvas id="cv_chi2"></canvas></div>
     <div id="r_chi2"></div>
+  </div>
+</div>
+
+<!-- F 分布 -->
+<div class="panel" id="p_f">
+  <button class="back" data-go="home">← 返回首页</button>
+  <div class="card"><div class="sec-title">④ F 分布 F(d<sub>1</sub>, d<sub>2</sub>)</div>
+    <div class="hint">F = (S<sub>1</sub>²/d<sub>1</sub>) / (S<sub>2</sub>²/d<sub>2</sub>)，用于两方差比检验。d<sub>1</sub>、d<sub>2</sub> 分别为分子、分母自由度。</div>
+    <div class="row"><label>分子自由度 d<sub>1</sub></label><input type="number" id="f_d1" value="5" min="1" step="1"></div>
+    <div class="row"><label>分母自由度 d<sub>2</sub></label><input type="number" id="f_d2" value="10" min="1" step="1"></div>
+    <div class="cvwrap"><canvas id="cv_f"></canvas></div>
+    <div id="r_f"></div>
   </div>
 </div>
 
@@ -285,6 +299,15 @@ function chi2Pdf(x, df) {
   if (x <= 0) return 0;
   return Math.exp((df/2-1)*Math.log(x) - x/2 - (df/2)*Math.LN2 - lgamma(df/2));
 }
+function fPdf(x, d1, d2) {
+  if (x <= 0) return 0;
+  var a = d1/2, b = d2/2;
+  var logf = lgamma(a+b) - lgamma(a) - lgamma(b)
+    + a*Math.log(d1/d2)
+    + (a-1)*Math.log(x)
+    - (a+b)*Math.log(1 + d1*x/d2);
+  return Math.exp(logf);
+}
 function betaPdf(x, a, b) {
   if (x <= 0 || x >= 1) return 0;
   var lb = lgamma(a) + lgamma(b) - lgamma(a+b);
@@ -461,14 +484,37 @@ function calcChi2() {
   var df = parseFloat(document.getElementById('c_df').value);
   if (isNaN(df) || df < 1) { document.getElementById('r_chi2').innerHTML='<div class="err">自由度 ν 须 ≥ 1</div>'; return; }
   var box = setupCanvas('cv_chi2');
-  var xMax = Math.max(df+4*Math.sqrt(2*df), 20);
-  var peak = funcMax(function(x){ return chi2Pdf(x, df); }, 0.001, xMax, 400);
-  drawCurve(box, [{fn:function(x){return chi2Pdf(x,df);}, color:'#408ce0'}], 0.001, xMax, peak*1.15);
+  var sd = Math.sqrt(2*df);
+  var xMax = Math.max(df+5*sd, 20);
+  var peakC = funcMax(function(x){ return chi2Pdf(x, df); }, 0.001, xMax, 400);
+  var peakN = normPdf(df, df, sd);
+  var yMax = Math.max(peakC, peakN)*1.15;
+  drawCurve(box, [
+    {fn:function(x){return chi2Pdf(x,df);}, color:'#408ce0'},
+    {fn:function(x){return normPdf(x,df,sd);}, color:'#bbb', width:1.5}
+  ], 0.001, xMax, yMax);
   var lo = chi2Ppf(0.025, df), hi = chi2Ppf(0.975, df);
   document.getElementById('r_chi2').innerHTML =
     '<div class="result-box">自由度 ν = '+df+'，均值 = ν = '+df+'，方差 = 2ν = '+(2*df)+'<br>'+
     '95% 双侧分位：['+lo.toFixed(2)+', '+hi.toFixed(2)+']'+
     '<span class="dim">（大 ν 时 χ²(ν)≈N(ν,2ν)）</span></div>';
+}
+
+// ============ F 分布 ============
+function calcF() {
+  var d1 = parseFloat(document.getElementById('f_d1').value);
+  var d2 = parseFloat(document.getElementById('f_d2').value);
+  var el = document.getElementById('r_f');
+  if (isNaN(d1) || d1 < 1) { el.innerHTML='<div class="err">分子自由度 d<sub>1</sub> 须 ≥ 1</div>'; return; }
+  if (isNaN(d2) || d2 < 1) { el.innerHTML='<div class="err">分母自由度 d<sub>2</sub> 须 ≥ 1</div>'; return; }
+  var box = setupCanvas('cv_f');
+  var mean = (d2 > 2) ? d2/(d2-2) : 1.5;
+  var xMax = Math.max(mean*4, 3);
+  var peak = funcMax(function(x){ return fPdf(x, d1, d2); }, 0.001, xMax, 400);
+  drawCurve(box, [{fn:function(x){return fPdf(x,d1,d2);}, color:'#408ce0'}], 0.001, xMax, peak*1.15);
+  var meanStr = (d2 > 2) ? '均值 = '+mean.toFixed(3) : '（d<sub>2</sub>≤2 时均值不存在）';
+  el.innerHTML = '<div class="result-box">d<sub>1</sub>='+d1+', d<sub>2</sub>='+d2+'<br>'+meanStr+
+    '<br><span class="dim">F = (S<sub>1</sub>²/d<sub>1</sub>) / (S<sub>2</sub>²/d<sub>2</sub>)，用于两总体方差比检验</span></div>';
 }
 
 // ============ 参数估计 ============
@@ -739,7 +785,7 @@ function calcA(){
 }
 
 // ============ 导航切换 ============
-var drawers = { norm:calcNorm, tdist:calcT, chi2:calcChi2, est:calcEst, bayes:calcBayes, mc:calcMC, markov:calcMarkov, wilson:function(){calcW1();calcW2();}, duane:function(){calcD1();calcD2();calcD3();}, amsaa:calcA };
+var drawers = { norm:calcNorm, tdist:calcT, chi2:calcChi2, f:calcF, est:calcEst, bayes:calcBayes, mc:calcMC, markov:calcMarkov, wilson:function(){calcW1();calcW2();}, duane:function(){calcD1();calcD2();calcD3();}, amsaa:calcA };
 function showPanel(name){
   document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
   document.getElementById('p_'+name).classList.add('active');
@@ -753,6 +799,7 @@ document.querySelectorAll('[data-go]').forEach(function(el){
 ['n_mu','n_sig'].forEach(function(id){document.getElementById(id).addEventListener('input',calcNorm);});
 ['t_df'].forEach(function(id){document.getElementById(id).addEventListener('input',calcT);});
 ['c_df'].forEach(function(id){document.getElementById(id).addEventListener('input',calcChi2);});
+['f_d1','f_d2'].forEach(function(id){document.getElementById(id).addEventListener('input',calcF);});
 document.getElementById('e_data').addEventListener('input',calcEst);
 ['b_a0','b_b0','b_k','b_n'].forEach(function(id){document.getElementById(id).addEventListener('input',calcBayes);});
 document.getElementById('btn_mc').addEventListener('click',calcMC);
