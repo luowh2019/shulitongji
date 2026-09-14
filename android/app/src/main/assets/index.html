@@ -80,7 +80,7 @@ input:invalid { border-color: #e74c3c; }
   <button class="back" data-go="home">← 返回首页</button>
   <div class="card"><div class="sec-title">① 正态分布（高斯分布）N(μ, σ²)</div>
     <div class="row"><label>均值 μ</label><input type="number" id="n_mu" value="0" step="any"></div>
-    <div class="row"><label>标准差 σ</label><input type="number" id="n_sig" value="1" min="0.01" step="0.1"></div>
+    <div class="row"><label>标准差 σ</label><input type="number" id="n_sig" value="1" min="0" step="0.1"></div>
     <div class="cvwrap"><canvas id="cv_norm"></canvas></div>
     <div id="r_norm"></div>
   </div>
@@ -122,8 +122,8 @@ input:invalid { border-color: #e74c3c; }
   <button class="back" data-go="home">← 返回首页</button>
   <div class="card"><div class="sec-title">⑤ 贝叶斯统计：Beta-Binomial 更新</div>
     <div class="hint">先验 Beta(α,β)，观测 k 次成功、n 次试验，后验为 Beta(α+k, β+n−k)。</div>
-    <div class="row"><label>先验 α</label><input type="number" id="b_a0" value="1" min="0.01" step="0.1"></div>
-    <div class="row"><label>先验 β</label><input type="number" id="b_b0" value="1" min="0.01" step="0.1"></div>
+    <div class="row"><label>先验 α</label><input type="number" id="b_a0" value="1" min="0" step="0.1"></div>
+    <div class="row"><label>先验 β</label><input type="number" id="b_b0" value="1" min="0" step="0.1"></div>
     <div class="row"><label>成功次数 k</label><input type="number" id="b_k" value="8" min="0" step="1"></div>
     <div class="row"><label>试验次数 n</label><input type="number" id="b_n" value="10" min="1" step="1"></div>
     <div class="cvwrap"><canvas id="cv_bayes"></canvas></div>
@@ -137,7 +137,7 @@ input:invalid { border-color: #e74c3c; }
   <div class="card"><div class="sec-title">⑥ 蒙特卡洛模拟（正态抽样）</div>
     <div class="row"><label>抽样次数 N</label><input type="number" id="m_n" value="5000" min="100" max="100000" step="100"></div>
     <div class="row"><label>总体均值 μ</label><input type="number" id="m_mu" value="0" step="any"></div>
-    <div class="row"><label>总体 σ</label><input type="number" id="m_sig" value="1" min="0.01" step="0.1"></div>
+    <div class="row"><label>总体 σ</label><input type="number" id="m_sig" value="1" min="0" step="0.1"></div>
     <div class="btns"><button class="btn" id="btn_mc">重新模拟</button></div>
     <div class="cvwrap"><canvas id="cv_mc"></canvas></div>
     <div id="r_mc"></div>
@@ -409,9 +409,14 @@ function calcNorm() {
   var sig = parseFloat(document.getElementById('n_sig').value);
   if (isNaN(sig) || sig <= 0) { document.getElementById('r_norm').innerHTML='<div class="err">标准差 σ 须 &gt; 0</div>'; return; }
   var box = setupCanvas('cv_norm');
-  var xMin = mu-4*sig, xMax = mu+4*sig;
-  var yMax = normPdf(mu,mu,sig)*1.15;
-  drawCurve(box, [{fn:function(x){return normPdf(x,mu,sig);}, color:'#408ce0'}], xMin, xMax, yMax);
+  var xMin = Math.min(mu-4*sig, -4), xMax = Math.max(mu+4*sig, 4);
+  var peakCur = normPdf(mu,mu,sig);
+  var peakRef = normPdf(0,0,1);
+  var yMax = Math.max(peakCur, peakRef)*1.15;
+  drawCurve(box, [
+    {fn:function(x){return normPdf(x,0,1);}, color:'#bbb', width:1.5},
+    {fn:function(x){return normPdf(x,mu,sig);}, color:'#408ce0'}
+  ], xMin, xMax, yMax);
   // μ±1σ 概率
   function erf(z){ // 正态 CDF 用近似
     return normPdf;
